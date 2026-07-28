@@ -1,8 +1,8 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
 
 use crate::app::App;
@@ -48,5 +48,43 @@ impl App {
         .scroll((self.detail_scroll, 0));
 
         f.render_widget(detail, chunks[1]);
+
+        if self.pop_up {
+            self.render_popup(f);
+        }
     }
+
+    pub fn render_popup(&self, f: &mut ratatui::Frame<'_>) {
+        let area = centered_rect(60, 50, f.area());
+
+        // Clears anything underneath
+        f.render_widget(Clear, area);
+
+        let popup = Paragraph::new("Choose a version")
+            .block(Block::default().title("Install").borders(Borders::ALL));
+
+        f.render_widget(popup, area);
+    }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(area);
+
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(vertical[1]);
+
+    horizontal[1]
 }
