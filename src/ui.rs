@@ -43,9 +43,9 @@ impl App {
             Line::from(self.selected_description()),
             Line::from(self.log_message.clone()),
         ])
-            .block(Block::default().borders(Borders::ALL).title(&*asdf_version))
-            .wrap(ratatui::widgets::Wrap { trim: true })
-            .scroll((self.detail_scroll, 0));
+        .block(Block::default().borders(Borders::ALL).title(&*asdf_version))
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .scroll((self.detail_scroll, 0));
 
         f.render_widget(detail, chunks[1]);
     }

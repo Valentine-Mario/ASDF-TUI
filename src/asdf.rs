@@ -580,13 +580,11 @@ impl AsdfCommands {
                 },
             ],
 
-            "LatestAll" => vec![
-                Parameter {
-                    name: "name",
-                    required: true,
-                    multiple: false,
-                },
-            ],
+            "LatestAll" => vec![Parameter {
+                name: "name",
+                required: true,
+                multiple: false,
+            }],
 
             "List" => vec![
                 Parameter {
