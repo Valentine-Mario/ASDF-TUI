@@ -22,6 +22,12 @@ pub struct App {
     pub asdf_commands: Vec<(&'static str, &'static str)>,
     /// selected asdf command
     pub selected_option: AsdfCommands,
+    /// user input
+    pub user_input: Vec<String>,
+    /// enable pop up dialog
+    pub pop_up: bool,
+    ///scroll the details page
+    pub detail_scroll: u16,
 }
 
 impl Default for App {
@@ -43,6 +49,9 @@ impl Default for App {
             list_state,
             asdf_commands: get_asdf_metadata(),
             selected_option: AsdfCommands::Version,
+            user_input: Vec::new(),
+            pop_up: false,
+            detail_scroll: 0,
         }
     }
 }
@@ -88,6 +97,34 @@ impl App {
         self.list_state.select(Some(i));
     }
 
+    pub fn enter(&mut self) {
+        if let Some(selected) = self.list_state.selected() {
+            self.log_message = String::from("executing command...");
+            let command = self.asdf_commands[selected].0;
+            let parameters = AsdfCommands::parameters(command);
+            if parameters.is_empty() {
+                //execute the command
+                let asdf_command = AsdfCommands::from_name(command, vec![]);
+                if asdf_command.is_ok() {
+                    self.selected_option = asdf_command.unwrap();
+                    let message = AsdfCommands::execute(&self.selected_option);
+                    if message.is_ok() {
+                        self.log_message = message.unwrap();
+                    } else {
+                        self.log_message = format!("Error: {}", message.unwrap_err());
+                    }
+                } else {
+                    self.log_message = format!("Error: {}", asdf_command.unwrap_err());
+                }
+            } else {
+                // show pop up dialog to get user input for parameters
+                self.pop_up = true;
+            }
+        } else {
+            panic!("No command selected");
+        }
+    }
+
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
         while self.running {
@@ -112,6 +149,7 @@ impl App {
                 AppEvent::Quit => self.quit(),
                 AppEvent::Decrement => self.down(),
                 AppEvent::Increment => self.up(),
+                AppEvent::Enter => self.enter(),
             },
         }
         Ok(())
@@ -124,8 +162,12 @@ impl App {
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
-            KeyCode::Right => self.events.send(AppEvent::Increment),
-            KeyCode::Left => self.events.send(AppEvent::Decrement),
+            KeyCode::Down => self.events.send(AppEvent::Increment),
+            KeyCode::Up => self.events.send(AppEvent::Decrement),
+            KeyCode::Enter => self.events.send(AppEvent::Enter),
+            KeyCode::PageUp => self.detail_scroll = self.detail_scroll.saturating_sub(10),
+            KeyCode::PageDown => self.detail_scroll = self.detail_scroll.saturating_add(10),
+            // Other key events you could handle here.
             // Other handlers you could add here.
             _ => {}
         }

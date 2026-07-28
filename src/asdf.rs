@@ -1,6 +1,13 @@
 use std::io;
 use std::process::Command;
 
+#[derive(Debug, Clone)]
+pub struct Parameter {
+    pub name: &'static str,
+    pub required: bool,
+    pub multiple: bool,
+}
+
 #[derive(Debug)]
 pub enum AsdfCommands {
     // ==========================
@@ -445,6 +452,265 @@ impl AsdfCommands {
             },
 
             _ => Err(format!("Unknown command '{name}'")),
+        }
+    }
+
+    pub fn parameters(name: &str) -> Vec<Parameter> {
+        match name {
+            // ==========================
+            // MANAGE PLUGINS
+            // ==========================
+            "PluginAdd" => vec![
+                Parameter {
+                    name: "Plugin Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Git URL",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "PluginList" => vec![
+                Parameter {
+                    name: "--urls",
+                    required: false,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "--refs",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "PluginListAll" => vec![],
+
+            "PluginRemove" => vec![Parameter {
+                name: "Plugin Name",
+                required: true,
+                multiple: false,
+            }],
+
+            "PluginUpdate" => vec![
+                Parameter {
+                    name: "Plugin Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Git Ref",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "PluginUpdateAll" => vec![],
+
+            // ==========================
+            // MANAGE TOOLS
+            // ==========================
+            "Current" => vec![],
+
+            "CurrentTool" => vec![Parameter {
+                name: "Tool Name",
+                required: true,
+                multiple: false,
+            }],
+
+            "Help" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "Install" => vec![],
+
+            "InstallTool" => vec![Parameter {
+                name: "Tool Name",
+                required: true,
+                multiple: false,
+            }],
+
+            "InstallVersion" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version",
+                    required: true,
+                    multiple: false,
+                },
+            ],
+
+            "InstallLatest" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version Prefix",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "Latest" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version Prefix",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "LatestAll" => vec![
+                Parameter {
+                    name: "name",
+                    required: true,
+                    multiple: false,
+                },
+            ],
+
+            "List" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version Filter",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "ListAll" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version Filter",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "Set" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version(s)",
+                    required: true,
+                    multiple: true,
+                },
+            ],
+
+            "Uninstall" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version",
+                    required: true,
+                    multiple: false,
+                },
+            ],
+
+            "Where" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "Which" => vec![Parameter {
+                name: "Command",
+                required: true,
+                multiple: false,
+            }],
+
+            // ==========================
+            // UTILS
+            // ==========================
+            "Exec" => vec![
+                Parameter {
+                    name: "Command",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Arguments",
+                    required: false,
+                    multiple: true,
+                },
+            ],
+
+            "Env" => vec![
+                Parameter {
+                    name: "Command",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Utility",
+                    required: false,
+                    multiple: false,
+                },
+            ],
+
+            "Info" => vec![],
+            "Version" => vec![],
+
+            "Reshim" => vec![
+                Parameter {
+                    name: "Tool Name",
+                    required: true,
+                    multiple: false,
+                },
+                Parameter {
+                    name: "Version",
+                    required: true,
+                    multiple: false,
+                },
+            ],
+
+            "ShimVersions" => vec![Parameter {
+                name: "Command",
+                required: true,
+                multiple: false,
+            }],
+
+            _ => vec![],
         }
     }
 }
