@@ -1,12 +1,9 @@
 use core::panic;
 
-use crate::asdf::{self, AsdfCommands, get_asdf_metadata};
+use crate::asdf::{AsdfCommands, get_asdf_metadata};
 use crate::event::{AppEvent, Event, EventHandler};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{
-    DefaultTerminal,
-    widgets::{List, ListItem, ListState},
-};
+use ratatui::{DefaultTerminal, widgets::ListState};
 
 /// Application.
 #[derive(Debug)]
@@ -23,6 +20,8 @@ pub struct App {
     pub list_state: ListState,
     /// List of asdf commands.
     pub asdf_commands: Vec<(&'static str, &'static str)>,
+    /// selected asdf command
+    pub selected_option: AsdfCommands,
 }
 
 impl Default for App {
@@ -43,6 +42,7 @@ impl Default for App {
             events: EventHandler::new(),
             list_state,
             asdf_commands: get_asdf_metadata(),
+            selected_option: AsdfCommands::Version,
         }
     }
 }

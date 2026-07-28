@@ -1,10 +1,7 @@
 use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
-    buffer::Buffer,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Widget},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 use crate::app::App;
@@ -38,14 +35,13 @@ impl App {
             .highlight_symbol("> ");
 
         f.render_stateful_widget(list, chunks[0], &mut self.list_state.clone());
+        let asdf_version = format!("ASDF Version: {}", self.asdf_version);
 
         // Right panel: description tied to selection
         let detail = Paragraph::new(self.selected_description())
-            .block(Block::default().borders(Borders::ALL).title("Details"))
+            .block(Block::default().borders(Borders::ALL).title(&*asdf_version))
             .wrap(ratatui::widgets::Wrap { trim: true });
 
         f.render_widget(detail, chunks[1]);
     }
 }
-
-fn ui(f: &mut ratatui::Frame, app: &mut App) {}
