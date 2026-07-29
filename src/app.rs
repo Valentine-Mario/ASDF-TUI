@@ -181,6 +181,7 @@ impl App {
         while let Ok(event) = self.rx.try_recv() {
             match event {
                 LogEvent::Log(line) => {
+                    //todo: buffer the log message and display in chunks
                     self.log_message.push_str(&line);
                     self.log_message.push('\n');
                 }
