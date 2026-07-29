@@ -348,17 +348,6 @@ impl AsdfCommands {
                 }
             }
         });
-
-        // let output = cmd.output()?;
-
-        // if output.status.success() {
-        //     Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
-        // } else {
-        //     Err(io::Error::new(
-        //         io::ErrorKind::Other,
-        //         String::from_utf8_lossy(&output.stderr).into_owned(),
-        //     ))
-        // }
     }
 
     pub fn from_name(name: &str, params: Vec<String>) -> Result<Self, String> {
