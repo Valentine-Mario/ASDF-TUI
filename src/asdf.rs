@@ -1,11 +1,16 @@
-use std::io;
-use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::sync::mpsc::Sender;
+use std::thread;
+
+use crate::event::LogEvent;
 
 #[derive(Debug, Clone)]
 pub struct Parameter {
     pub name: &'static str,
     pub required: bool,
     pub multiple: bool,
+    pub value: Option<String>,
 }
 
 #[derive(Debug)]
@@ -137,7 +142,7 @@ pub enum AsdfCommands {
 }
 
 impl AsdfCommands {
-    pub fn execute(&self) -> io::Result<String> {
+    pub fn execute(&self, tx: Sender<LogEvent>) {
         let mut cmd = Command::new("asdf");
 
         match self {
@@ -288,16 +293,72 @@ impl AsdfCommands {
             }
         }
 
-        let output = cmd.output()?;
+        thread::spawn(move || {
+            cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
-        } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stderr).into_owned(),
-            ))
-        }
+            let mut child = match cmd.spawn() {
+                Ok(child) => child,
+                Err(e) => {
+                    let _ = tx.send(LogEvent::Finished(Err(e.to_string())));
+                    return;
+                }
+            };
+
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
+
+            let tx_out = tx.clone();
+
+            let stdout_thread = thread::spawn(move || {
+                let reader = BufReader::new(stdout);
+
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        let _ = tx_out.send(LogEvent::Log(line));
+                    }
+                }
+            });
+
+            let tx_err = tx.clone();
+
+            let stderr_thread = thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        let _ = tx_err.send(LogEvent::Log(line));
+                    }
+                }
+            });
+
+            let status = child.wait();
+
+            let _ = stdout_thread.join();
+            let _ = stderr_thread.join();
+
+            match status {
+                Ok(status) if status.success() => {
+                    let _ = tx.send(LogEvent::Finished(Ok(())));
+                }
+                Ok(status) => {
+                    let _ = tx.send(LogEvent::Finished(Err(format!("Exited with {}", status))));
+                }
+                Err(e) => {
+                    let _ = tx.send(LogEvent::Finished(Err(e.to_string())));
+                }
+            }
+        });
+
+        // let output = cmd.output()?;
+
+        // if output.status.success() {
+        //     Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+        // } else {
+        //     Err(io::Error::new(
+        //         io::ErrorKind::Other,
+        //         String::from_utf8_lossy(&output.stderr).into_owned(),
+        //     ))
+        // }
     }
 
     pub fn from_name(name: &str, params: Vec<String>) -> Result<Self, String> {
@@ -465,11 +526,13 @@ impl AsdfCommands {
                     name: "Plugin Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Git URL",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -478,11 +541,13 @@ impl AsdfCommands {
                     name: "--urls",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "--refs",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -492,6 +557,7 @@ impl AsdfCommands {
                 name: "Plugin Name",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             "PluginUpdate" => vec![
@@ -499,11 +565,13 @@ impl AsdfCommands {
                     name: "Plugin Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Git Ref",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -518,6 +586,7 @@ impl AsdfCommands {
                 name: "Tool Name",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             "Help" => vec![
@@ -525,11 +594,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -539,6 +610,7 @@ impl AsdfCommands {
                 name: "Tool Name",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             "InstallVersion" => vec![
@@ -546,11 +618,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -559,11 +633,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version Prefix",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -572,11 +648,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version Prefix",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -584,6 +662,7 @@ impl AsdfCommands {
                 name: "name",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             "List" => vec![
@@ -591,11 +670,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version Filter",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -604,11 +685,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version Filter",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -617,11 +700,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version(s)",
                     required: true,
                     multiple: true,
+                    value: None,
                 },
             ],
 
@@ -630,11 +715,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -643,11 +730,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -655,6 +744,7 @@ impl AsdfCommands {
                 name: "Command",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             // ==========================
@@ -665,11 +755,13 @@ impl AsdfCommands {
                     name: "Command",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Arguments",
                     required: false,
                     multiple: true,
+                    value: None,
                 },
             ],
 
@@ -678,11 +770,13 @@ impl AsdfCommands {
                     name: "Command",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Utility",
                     required: false,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -694,11 +788,13 @@ impl AsdfCommands {
                     name: "Tool Name",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
                 Parameter {
                     name: "Version",
                     required: true,
                     multiple: false,
+                    value: None,
                 },
             ],
 
@@ -706,6 +802,7 @@ impl AsdfCommands {
                 name: "Command",
                 required: true,
                 multiple: false,
+                value: None,
             }],
 
             _ => vec![],

@@ -1,7 +1,8 @@
 use core::panic;
+use std::sync::mpsc::{self, Receiver, Sender};
 
-use crate::asdf::{AsdfCommands, get_asdf_metadata};
-use crate::event::{AppEvent, Event, EventHandler};
+use crate::asdf::{AsdfCommands, Parameter, get_asdf_metadata};
+use crate::event::{AppEvent, Event, EventHandler, LogEvent};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{DefaultTerminal, widgets::ListState};
 
@@ -12,8 +13,6 @@ pub struct App {
     pub running: bool,
     /// asdf logs
     pub log_message: String,
-    ///ASDF version
-    pub asdf_version: String,
     /// Event handler.
     pub events: EventHandler,
     /// List state for the list of asdf commands.
@@ -23,28 +22,27 @@ pub struct App {
     /// selected asdf command
     pub selected_option: AsdfCommands,
     /// user input
-    pub user_input: Vec<String>,
+    pub user_input: Vec<Parameter>,
     /// enable pop up dialog
     pub pop_up: bool,
     ///scroll the details page
     pub detail_scroll: u16,
+    /// send log events to the log thread
+    pub tx: Sender<LogEvent>,
+    ///receive log events from the log thread
+    pub rx: Receiver<LogEvent>,
 }
 
 impl Default for App {
     fn default() -> Self {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
-        let asdf_version = AsdfCommands::execute(&AsdfCommands::Version);
-        if asdf_version.is_err() {
-            panic!(
-                "asdf is not installed or not found in PATH. Please install asdf and try again."
-            );
-        };
+
+        let (tx, rx) = mpsc::channel();
 
         Self {
             running: true,
             log_message: String::new(),
-            asdf_version: asdf_version.unwrap(),
             events: EventHandler::new(),
             list_state,
             asdf_commands: get_asdf_metadata(),
@@ -52,6 +50,8 @@ impl Default for App {
             user_input: Vec::new(),
             pop_up: false,
             detail_scroll: 0,
+            tx,
+            rx,
         }
     }
 }
@@ -98,8 +98,8 @@ impl App {
     }
 
     pub fn enter(&mut self) {
+        self.clear_log();
         if let Some(selected) = self.list_state.selected() {
-            self.log_message = String::from("executing command...");
             let command = self.asdf_commands[selected].0;
             let parameters = AsdfCommands::parameters(command);
             if parameters.is_empty() {
@@ -107,12 +107,7 @@ impl App {
                 let asdf_command = AsdfCommands::from_name(command, vec![]);
                 if asdf_command.is_ok() {
                     self.selected_option = asdf_command.unwrap();
-                    let message = AsdfCommands::execute(&self.selected_option);
-                    if message.is_ok() {
-                        self.log_message = message.unwrap();
-                    } else {
-                        self.log_message = format!("Error: {}", message.unwrap_err());
-                    }
+                    AsdfCommands::execute(&self.selected_option, self.tx.clone());
                 } else {
                     self.log_message = format!("Error: {}", asdf_command.unwrap_err());
                 }
@@ -124,6 +119,9 @@ impl App {
             panic!("No command selected");
         }
     }
+    fn clear_log(&mut self) {
+        self.log_message.clear();
+    }
 
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
@@ -131,6 +129,7 @@ impl App {
             terminal.draw(|frame| self.render(frame))?;
             self.handle_events()?;
         }
+
         Ok(())
     }
 
@@ -178,7 +177,20 @@ impl App {
     ///
     /// The tick event is where you can update the state of your application with any logic that
     /// needs to be updated at a fixed frame rate. E.g. polling a server, updating an animation.
-    pub fn tick(&self) {}
+    pub fn tick(&mut self) {
+        while let Ok(event) = self.rx.try_recv() {
+            match event {
+                LogEvent::Log(line) => {
+                    self.log_message.push_str(&line);
+                    self.log_message.push('\n');
+                }
+
+                LogEvent::Finished(_) => {
+                    self.log_message.push_str("\n\n");
+                }
+            }
+        }
+    }
 
     /// Set running to false to quit the application.
     pub fn quit(&mut self) {

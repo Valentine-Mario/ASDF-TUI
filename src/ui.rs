@@ -36,14 +36,13 @@ impl App {
             .highlight_symbol("> ");
 
         f.render_stateful_widget(list, chunks[0], &mut self.list_state);
-        let asdf_version = format!("ASDF Version: {}", self.asdf_version);
 
         // Right panel: description tied to selection
         let detail = Paragraph::new(vec![
             Line::from(self.selected_description()),
             Line::from(self.log_message.clone()),
         ])
-        .block(Block::default().borders(Borders::ALL).title(&*asdf_version))
+        .block(Block::default().borders(Borders::ALL).title("Details"))
         .wrap(ratatui::widgets::Wrap { trim: true })
         .scroll((self.detail_scroll, 0));
 
