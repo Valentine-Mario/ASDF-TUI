@@ -76,14 +76,18 @@ impl App {
                 Line::from(vec![Span::styled(
                     field,
                     Style::default()
-                        .fg(Color::Cyan)
+                        .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 )])
             })
             .collect();
 
         let list = List::new(lines)
-            .block(Block::default().borders(Borders::ALL).title("User Input"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("User Input (Esc to cancel and Enter to submit)"),
+            )
             .highlight_style(
                 Style::default()
                     .bg(Color::Blue)

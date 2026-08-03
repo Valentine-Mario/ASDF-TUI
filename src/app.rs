@@ -42,6 +42,9 @@ impl Default for App {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
 
+        let mut user_input_state = ListState::default();
+        user_input_state.select(Some(0));
+
         let (tx, rx) = mpsc::channel();
 
         Self {
@@ -51,9 +54,9 @@ impl Default for App {
             list_state,
             asdf_commands: get_asdf_metadata(),
             selected_option: AsdfCommands::Version,
-            selected_parameter: None,
+            selected_parameter: Some(0),
             user_input: Vec::new(),
-            user_input_state: ListState::default(),
+            user_input_state,
             pop_up: false,
             detail_scroll: 0,
             tx,
