@@ -23,6 +23,10 @@ pub struct App {
     pub selected_option: AsdfCommands,
     /// user input
     pub user_input: Vec<Parameter>,
+    /// user input list state
+    pub user_input_state: ListState,
+    /// user selected option from the list of parameters
+    pub selected_parameter: Option<usize>,
     /// enable pop up dialog
     pub pop_up: bool,
     ///scroll the details page
@@ -47,7 +51,9 @@ impl Default for App {
             list_state,
             asdf_commands: get_asdf_metadata(),
             selected_option: AsdfCommands::Version,
+            selected_parameter: None,
             user_input: Vec::new(),
+            user_input_state: ListState::default(),
             pop_up: false,
             detail_scroll: 0,
             tx,
@@ -70,31 +76,61 @@ impl App {
     }
 
     pub fn up(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i >= self.asdf_commands.len() - 1 {
-                    0
-                } else {
-                    i + 1
+        if self.pop_up {
+            let i = match self.user_input_state.selected() {
+                Some(i) => {
+                    if i == 0 {
+                        self.user_input.len() - 1
+                    } else {
+                        i - 1
+                    }
                 }
-            }
-            None => 0,
-        };
-        self.list_state.select(Some(i));
+                None => self.user_input.len() - 1,
+            };
+            self.user_input_state.select(Some(i));
+            self.selected_parameter = Some(i)
+        } else {
+            let i = match self.list_state.selected() {
+                Some(i) => {
+                    if i >= self.asdf_commands.len() - 1 {
+                        0
+                    } else {
+                        i + 1
+                    }
+                }
+                None => 0,
+            };
+            self.list_state.select(Some(i));
+        }
     }
 
     pub fn down(&mut self) {
-        let i = match self.list_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.asdf_commands.len() - 1
-                } else {
-                    i - 1
+        if self.pop_up {
+            let i = match self.user_input_state.selected() {
+                Some(i) => {
+                    if i >= self.user_input.len() - 1 {
+                        0
+                    } else {
+                        i + 1
+                    }
                 }
-            }
-            None => self.asdf_commands.len() - 1,
-        };
-        self.list_state.select(Some(i));
+                None => 0,
+            };
+            self.user_input_state.select(Some(i));
+            self.selected_parameter = Some(i)
+        } else {
+            let i = match self.list_state.selected() {
+                Some(i) => {
+                    if i == 0 {
+                        self.asdf_commands.len() - 1
+                    } else {
+                        i - 1
+                    }
+                }
+                None => self.asdf_commands.len() - 1,
+            };
+            self.list_state.select(Some(i));
+        }
     }
 
     pub fn enter(&mut self) {
@@ -114,11 +150,29 @@ impl App {
             } else {
                 // show pop up dialog to get user input for parameters
                 self.pop_up = true;
+                self.user_input = parameters;
             }
         } else {
             panic!("No command selected");
         }
     }
+    pub fn update_selected_parameter(&mut self, value: String) {
+        if let Some(selected) = self.selected_parameter {
+            self.user_input[selected]
+                .value
+                .get_or_insert_with(String::new)
+                .push_str(&value);
+        }
+    }
+
+    pub fn backspace_selected_parameter(&mut self) {
+        if let Some(selected) = self.selected_parameter {
+            if let Some(value) = &mut self.user_input[selected].value {
+                value.pop();
+            }
+        }
+    }
+
     fn clear_log(&mut self) {
         self.log_message.clear();
     }
@@ -161,6 +215,8 @@ impl App {
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
+            KeyCode::Char(c) => self.update_selected_parameter(c.to_string()),
+            KeyCode::Backspace => self.backspace_selected_parameter(),
             KeyCode::Down => self.events.send(AppEvent::Increment),
             KeyCode::Up => self.events.send(AppEvent::Decrement),
             KeyCode::Enter => self.events.send(AppEvent::Enter),

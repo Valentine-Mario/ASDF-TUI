@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
 
@@ -53,16 +53,45 @@ impl App {
         }
     }
 
-    pub fn render_popup(&self, f: &mut ratatui::Frame<'_>) {
+    pub fn render_popup(&mut self, f: &mut ratatui::Frame<'_>) {
         let area = centered_rect(60, 50, f.area());
 
         // Clears anything underneath
         f.render_widget(Clear, area);
+        let lines: Vec<Line<'_>> = self
+            .user_input
+            .iter()
+            .enumerate()
+            .map(|(_, input)| {
+                let mut field = format!("{}", input.name);
+                if input.multiple {
+                    field.push_str(" (multiple space separated)");
+                }
+                if input.required {
+                    field.push_str("*");
+                }
+                if input.value.is_some() {
+                    field.push_str(&format!(": {}", input.value.as_ref().unwrap()));
+                }
+                Line::from(vec![Span::styled(
+                    field,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )])
+            })
+            .collect();
 
-        let popup = Paragraph::new("Choose a version")
-            .block(Block::default().title("Install").borders(Borders::ALL));
+        let list = List::new(lines)
+            .block(Block::default().borders(Borders::ALL).title("User Input"))
+            .highlight_style(
+                Style::default()
+                    .bg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .highlight_symbol("> ");
 
-        f.render_widget(popup, area);
+        f.render_stateful_widget(list, area, &mut self.user_input_state);
     }
 }
 
