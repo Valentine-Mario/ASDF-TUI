@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader};
+use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::mpsc::Sender;
 use std::thread;
@@ -310,24 +310,31 @@ impl AsdfCommands {
             let tx_out = tx.clone();
 
             let stdout_thread = thread::spawn(move || {
-                let reader = BufReader::new(stdout);
+                let mut stdout = stdout;
+                let mut buffer = [0u8; 1024];
 
-                for line in reader.lines() {
-                    if let Ok(line) = line {
-                        let _ = tx_out.send(LogEvent::Log(line));
+                while let Ok(n) = stdout.read(&mut buffer) {
+                    if n == 0 {
+                        break;
                     }
+                    let text = String::from_utf8_lossy(&buffer[..n]).into_owned();
+                        let _ = tx_out.send(LogEvent::Log(text));
+                    
                 }
             });
 
             let tx_err = tx.clone();
 
             let stderr_thread = thread::spawn(move || {
-                let reader = BufReader::new(stderr);
+                let mut stderr = stderr;
+                let mut buffer = [0u8; 1024];
 
-                for line in reader.lines() {
-                    if let Ok(line) = line {
-                        let _ = tx_err.send(LogEvent::Log(line));
+                while let Ok(n) = stderr.read(&mut buffer) {
+                    if n == 0 {
+                        break;
                     }
+                    let text = String::from_utf8_lossy(&buffer[..n]).into_owned();
+                    let _ = tx_err.send(LogEvent::Log(text));
                 }
             });
 

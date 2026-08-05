@@ -1,5 +1,4 @@
 use core::panic;
-use std::println;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use crate::asdf::{AsdfCommands, Parameter, get_asdf_metadata};
@@ -291,7 +290,6 @@ impl App {
                 LogEvent::Log(line) => {
                     //todo: buffer the log message and display in chunks
                     self.log_message.push_str(&line);
-                    self.log_message.push('\n');
                 }
 
                 LogEvent::Finished(_) => {

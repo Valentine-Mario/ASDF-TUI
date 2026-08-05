@@ -37,14 +37,21 @@ impl App {
 
         f.render_stateful_widget(list, chunks[0], &mut self.list_state);
 
+        let mut description_line = vec![Line::from(self.selected_description())];
+        description_line.extend(
+            self.log_message
+                .lines()
+                .map(|line| Line::from(line.to_string())),
+        );
         // Right panel: description tied to selection
-        let detail = Paragraph::new(vec![
-            Line::from(self.selected_description()),
-            Line::from(self.log_message.clone()),
-        ])
-        .block(Block::default().borders(Borders::ALL).title("Details"))
-        .wrap(ratatui::widgets::Wrap { trim: true })
-        .scroll((self.detail_scroll, 0));
+        let detail = Paragraph::new(description_line)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Details (page up or down for next item on the list)"),
+            )
+            .wrap(ratatui::widgets::Wrap { trim: true })
+            .scroll((self.detail_scroll, 0));
 
         f.render_widget(detail, chunks[1]);
 
