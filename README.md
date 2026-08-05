@@ -58,7 +58,7 @@ asdf version
 Clone the repository:
 
 ```bash
-git clone https://github.com/<username>/asdf-tui.git
+git clone https://github.com/Valentine-Mario/ASDF-TUI.git
 cd asdf-tui
 ```
 
@@ -79,6 +79,9 @@ Or execute the release binary:
 ```bash
 ./target/release/asdf-tui
 ```
+
+## Demo
+
 
 ## How it works
 
