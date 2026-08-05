@@ -83,6 +83,10 @@ Or execute the release binary:
 ## Demo
 
 
+https://github.com/user-attachments/assets/a79b22aa-4ddb-4588-b76d-db3712c5d747
+
+
+
 ## How it works
 
 `asdf-tui` is a thin wrapper around the `asdf` CLI.
