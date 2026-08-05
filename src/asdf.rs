@@ -318,8 +318,7 @@ impl AsdfCommands {
                         break;
                     }
                     let text = String::from_utf8_lossy(&buffer[..n]).into_owned();
-                        let _ = tx_out.send(LogEvent::Log(text));
-                    
+                    let _ = tx_out.send(LogEvent::Log(text));
                 }
             });
 
