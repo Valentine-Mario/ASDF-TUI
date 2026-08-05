@@ -1,4 +1,5 @@
 use core::panic;
+use std::println;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use crate::asdf::{AsdfCommands, Parameter, get_asdf_metadata};
@@ -29,6 +30,8 @@ pub struct App {
     pub selected_parameter: Option<usize>,
     /// enable pop up dialog
     pub pop_up: bool,
+    /// error message for missing required parameters
+    pub required_message: Option<String>,
     ///scroll the details page
     pub detail_scroll: u16,
     /// send log events to the log thread
@@ -58,6 +61,7 @@ impl Default for App {
             user_input: Vec::new(),
             user_input_state,
             pop_up: false,
+            required_message: None,
             detail_scroll: 0,
             tx,
             rx,
@@ -138,25 +142,66 @@ impl App {
 
     pub fn enter(&mut self) {
         self.clear_log();
-        if let Some(selected) = self.list_state.selected() {
-            let command = self.asdf_commands[selected].0;
-            let parameters = AsdfCommands::parameters(command);
-            if parameters.is_empty() {
-                //execute the command
-                let asdf_command = AsdfCommands::from_name(command, vec![]);
-                if asdf_command.is_ok() {
-                    self.selected_option = asdf_command.unwrap();
-                    AsdfCommands::execute(&self.selected_option, self.tx.clone());
+        if self.pop_up {
+            self.selected_parameter = Some(0);
+            let user_input = self.user_input.clone();
+            //retrieve the user input values
+            if user_input
+                .iter()
+                .any(|param| param.required && param.value.is_none())
+            {
+                self.required_message = Some("Error: Required parameters are missing.".to_string());
+                self.log_message
+                    .push_str(self.required_message.as_ref().unwrap());
+                return;
+            }
+
+            //convert the user input into a vector of strings and all multiple values are space separated
+            let parameters: Vec<String> = user_input
+                .iter()
+                .filter_map(|param| param.value.clone())
+                .flat_map(|value| {
+                    value
+                        .split_whitespace()
+                        .map(String::from)
+                        .collect::<Vec<String>>()
+                })
+                .collect();
+
+            // execute the command with the parameters
+            let asdf_command = AsdfCommands::from_name(
+                self.asdf_commands[self.list_state.selected().unwrap()].0,
+                parameters,
+            );
+            if asdf_command.is_ok() {
+                self.selected_option = asdf_command.unwrap();
+                AsdfCommands::execute(&self.selected_option, self.tx.clone());
+            } else {
+                self.log_message = format!("Error: {}", asdf_command.unwrap_err());
+            }
+            // hide the pop up and execute the command with the parameters
+            self.pop_up = false;
+        } else {
+            if let Some(selected) = self.list_state.selected() {
+                let command = self.asdf_commands[selected].0;
+                let parameters = AsdfCommands::parameters(command);
+                if parameters.is_empty() {
+                    //execute the command
+                    let asdf_command = AsdfCommands::from_name(command, vec![]);
+                    if asdf_command.is_ok() {
+                        self.selected_option = asdf_command.unwrap();
+                        AsdfCommands::execute(&self.selected_option, self.tx.clone());
+                    } else {
+                        self.log_message = format!("Error: {}", asdf_command.unwrap_err());
+                    }
                 } else {
-                    self.log_message = format!("Error: {}", asdf_command.unwrap_err());
+                    // show pop up dialog to get user input for parameters
+                    self.pop_up = true;
+                    self.user_input = parameters;
                 }
             } else {
-                // show pop up dialog to get user input for parameters
-                self.pop_up = true;
-                self.user_input = parameters;
+                panic!("No command selected");
             }
-        } else {
-            panic!("No command selected");
         }
     }
     pub fn update_selected_parameter(&mut self, value: String) {
@@ -214,7 +259,11 @@ impl App {
     /// Handles the key events and updates the state of [`App`].
     pub fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
         match key_event.code {
-            KeyCode::Esc => self.pop_up = false,
+            KeyCode::Esc => {
+                self.pop_up = false;
+                // Reset the selected parameter when closing the pop-up
+                self.selected_parameter = Some(0);
+            }
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }

@@ -856,7 +856,7 @@ pub fn get_asdf_metadata() -> Vec<(&'static str, &'static str)> {
         ("ListAll", "List all available versions of a tool."),
         (
             "Set",
-            "Set one or more tool versions in a .tool-versions file.",
+            "Set one or more tool versions in a .tool-versions file. (append -u or --home to set globally before version numbers)",
         ),
         ("Uninstall", "Remove an installed version of a tool."),
         ("Where", "Display the installation path of a tool."),
